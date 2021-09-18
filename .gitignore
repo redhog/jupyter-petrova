@@ -1,0 +1,15 @@
+*.egg-info/
+.ipynb_checkpoints/
+dist/
+build/
+*.py[cod]
+node_modules/
+
+# Compiled javascript
+jupyter_petrova/nbextension/
+jupyter_petrova/labextension/
+
+# OS X
+.DS_Store
+
+*~
