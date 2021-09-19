@@ -1,3 +1,5 @@
+// See example.py for the kernel counterpart to this file.
+
 var widgets = require('@jupyter-widgets/base');
 var _ = require('lodash');
 var $ = require('jquery');
@@ -6,46 +8,59 @@ backbone = require("../node_modules/backbone/backbone.js");
 joint = require('../node_modules/jointjs/dist/joint.js');
 jointcss = require('../node_modules/jointjs/dist/joint.css');
 
-// See example.py for the kernel counterpart to this file.
 
+var TaskModel = widgets.DOMWidgetModel.extend(
+    {
+        defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
+            _model_name: 'TaskModel',
+            _view_name: 'TaskView',
+            _model_module: 'jupyter-petrova',
+            _view_module: 'jupyter-petrova',
+            _model_module_version: '0.0.1',
+            _view_module_version: '0.0.1',
+            name: 'Unknown',
+            inputs: {},
+            value_repr: {}
+        })
+    },
+    {
+        serializers: _.extend({
+            inputs: { deserialize: widgets.unpack_models }
+        }, widgets.DOMWidgetModel.serializers)
+    }
+);
 
-// Custom Model. Custom widgets models must at least provide default values
-// for model attributes, including
-//
-//  - `_view_name`
-//  - `_view_module`
-//  - `_view_module_version`
-//
-//  - `_model_name`
-//  - `_model_module`
-//  - `_model_module_version`
-//
-//  when different from the base class.
-
-// When serialiazing the entire widget state for embedding, only values that
-// differ from the defaults will be specified.
-var HelloModel = widgets.DOMWidgetModel.extend({
-    defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
-        _model_name : 'HelloModel',
-        _view_name : 'HelloView',
-        _model_module : 'jupyter-petrova',
-        _view_module : 'jupyter-petrova',
-        _model_module_version : '0.0.1',
-        _view_module_version : '0.0.1',
-        value : 'Hello World!'
-    })
+var TaskView = widgets.DOMWidgetView.extend({
 });
 
+var GraphModel = widgets.DOMWidgetModel.extend(
+    {
+        defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
+            _model_name: 'GraphModel',
+            _view_name: 'GraphView',
+            _model_module: 'jupyter-petrova',
+            _view_module: 'jupyter-petrova',
+            _model_module_version: '0.0.1',
+            _view_module_version: '0.0.1',
+            tasks: {}
+        })
+    },
+    {
+        serializers: _.extend({
+            tasks: { deserialize: widgets.unpack_models }
+        }, widgets.DOMWidgetModel.serializers)
+    }
+);
 
-// Custom View. Renders the widget model.
-var HelloView = widgets.DOMWidgetView.extend({
-    // Defines how the widget gets rendered into the DOM
+
+var GraphView = widgets.DOMWidgetView.extend({
     render: function() {
 
         var graph_div = $("<div style='position: relative;'></div>");
         $(this.el).append(graph_div);
 
         var graph = new joint.dia.Graph;
+        window.gr = graph;
 
         var paper = new joint.dia.Paper({
             el: graph_div[0],
@@ -63,7 +78,7 @@ var HelloView = widgets.DOMWidgetView.extend({
                 fill: 'blue'
             },
             label: {
-                text: 'Hello',
+                text: 'Graph',
                 fill: 'white'
             }
         });
@@ -78,26 +93,20 @@ var HelloView = widgets.DOMWidgetView.extend({
         link.source(rect);
         link.target(rect2);
         link.addTo(graph);
-        
 
-/*
-
-        this.value_changed();
-
-        // Observe changes in the value traitlet in Python, and define
-        // a custom callback.
-        this.model.on('change:value', this.value_changed, this);
-*/
+        this.tasks_changed();
+        this.model.on('change:tasks', this.tasks_changed, this);
     },
 
-    value_changed: function() {
-        console.log("AAAAAAAAAA");
-        this.el.textContent = this.model.get('value');
-    }
+    tasks_changed: function() {
+        console.log("AAAAAAAAAA", this.model.get('tasks'));
+    },
 });
 
 
 module.exports = {
-    HelloModel: HelloModel,
-    HelloView: HelloView
+    TaskModel: TaskModel,
+    TaskView: TaskView,
+    GraphModel: GraphModel,
+    GraphView: GraphView
 };
