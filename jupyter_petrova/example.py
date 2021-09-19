@@ -32,6 +32,9 @@ class Task(widgets.Widget):
     exception = Unicode(allow_none=True).tag(sync=True)
     traceback = Unicode(allow_none=True).tag(sync=True)
 
+    x = Int(default=0).tag(sync=True)
+    y = Int(default=0).tag(sync=True)
+    
     def __init__(self, *arg, **kw):
         self.value_id = None
         self.value = None

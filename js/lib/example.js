@@ -20,7 +20,9 @@ var TaskModel = widgets.DOMWidgetModel.extend(
             _view_module_version: '0.0.1',
             name: 'Unknown',
             inputs: {},
-            value_repr: {}
+            value_repr: {},
+            x: 0,
+            y: 0
         })
     },
     {
@@ -55,51 +57,143 @@ var GraphModel = widgets.DOMWidgetModel.extend(
 
 var GraphView = widgets.DOMWidgetView.extend({
     render: function() {
+        var self = this;
+        
+        if (!self.graph) {
+            self.graph_div = $("<div style='position: relative; display: inline-block;'></div>");
+            self.output_div = $("<div style='position: absolute;'></div>");
+            self.output_wrapper = $("<div style='position: relative; display: inline-block; height: 700px; width: 33%; border-left: 1px solid grey;'></div>");
+            self.output_wrapper.html(self.output_div);
+            $(self.el).append(self.graph_div);
+            $(self.el).append(self.output_wrapper);
 
-        var graph_div = $("<div style='position: relative;'></div>");
-        $(this.el).append(graph_div);
+            self.graph = new joint.dia.Graph;
+            self.paper = new joint.dia.Paper({
+                el: self.graph_div[0],
+                model: self.graph,
+                width: "66%",
+                height: 700,
+                gridSize: 1
+            });
+            self.graph_div.find("svg").css({"height": "inherit"});
+            self.existing = {};
 
-        var graph = new joint.dia.Graph;
-        window.gr = graph;
+            window.gr = self.graph;
 
-        var paper = new joint.dia.Paper({
-            el: graph_div[0],
-            model: graph,
-            width: 600,
-            height: 100,
-            gridSize: 1
+            self.model.on('change:tasks', self.tasks_changed, self);
+
+            self.paper.on('element:pointerclick', function(elementView) {
+                var currentElement = elementView.model;
+                var value = self.existing[currentElement.attr("task_id")].task.get("value_repr")[0];
+
+                if (value["text/html"]) {
+                    self.output_div.html(value["text/html"]);
+                } else if (value["text/plain"]) {
+                    var wrapper = $("<pre></pre>");
+                    wrapper.html(value["text/plain"]);
+                    self.output_div.html(wrapper);
+                }
+            });
+        }
+        
+        var tasks = self.model.get("tasks");
+        Object.keys(tasks).map(function (key) { tasks[key].task_id = key; });
+
+        Object.keys(self.existing).map(function (task_id) {
+            if (!tasks[task_id]) {                    
+                self.remove_task(task_id);
+            }
+        });
+ 
+        Object.keys(tasks).map(function (key) {
+            if (!self.existing[key]) {
+                self.add_task(tasks[key]);
+            }
         });
 
+        Object.keys(tasks).map(function (key) {
+            self.update_task(tasks[key]);
+        });
+    },
+
+    remove_task: function (task_id) {
+        this.existing[task_id].cell.remove();
+        delete this.existing[task_id];
+    },
+
+    add_task: function (task) {
         var rect = new joint.shapes.standard.Rectangle();
-        rect.position(100, 30);
+        rect.position(task.get("x"), task.get("y"));
         rect.resize(100, 40);
         rect.attr({
             body: {
                 fill: 'blue'
             },
             label: {
-                text: 'Graph',
+                text: task.get("name"),
                 fill: 'white'
+            },
+            task_id: task.task_id
+        });
+        rect.addTo(this.graph);
+        
+        task.on('change:x', function () {
+            rect.position(task.get("x"), task.get("y"));
+        }, this);
+        task.on('change:y', function () {
+            rect.position(task.get("x"), task.get("y"));
+        }, this);
+        
+        this.existing[task.task_id] = {"task": task, "cell": rect, "links": {}};
+    },
+
+    update_task: function (task) {
+        var self = this;
+        var existing_links = self.existing[task.task_id].links;
+        var inputs = task.get("inputs");
+        
+        Object.keys(existing_links).map(function (key) {
+            if (!inputs[key] || (existing_links[key].task.task_id != inputs[key].task_id)) {
+                existing_links[key].cell.remove();
+                delete existing_links[key];
             }
         });
-        rect.addTo(graph);
-
-        var rect2 = rect.clone();
-        rect2.translate(300, 0);
-        rect2.attr('label/text', 'World!');
-        rect2.addTo(graph);
-
-        var link = new joint.shapes.standard.Link();
-        link.source(rect);
-        link.target(rect2);
-        link.addTo(graph);
-
-        this.tasks_changed();
-        this.model.on('change:tasks', this.tasks_changed, this);
+ 
+        Object.keys(inputs).map(function (key) {
+            if (!existing_links[key]) {
+                var link = new joint.shapes.standard.Link();
+                link.source(self.existing[inputs[key].task_id].cell, {
+                    anchor: {
+                        name: 'center',
+                        args: {
+                            rotate: true,
+                            padding: 10
+                        }
+                    }
+                });
+                link.target(self.existing[task.task_id].cell, {
+                    anchor: {
+                        name: 'center',
+                        args: {
+                            rotate: true,
+                            padding: 10
+                        }
+                    }
+                });
+                link.router('orthogonal');
+                link.connector('rounded');
+                link.addTo(self.graph);
+                existing_links[key] = {
+                    "task": inputs[key],
+                    "cell": link
+                };
+            }
+        });
     },
 
     tasks_changed: function() {
         console.log("AAAAAAAAAA", this.model.get('tasks'));
+        this.render();
     },
 });
 
