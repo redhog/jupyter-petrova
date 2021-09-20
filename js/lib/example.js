@@ -9,6 +9,21 @@ joint = require('../node_modules/jointjs/dist/joint.js');
 jointcss = require('../node_modules/jointjs/dist/joint.css');
 petrovacss = require('./petrova.css');
 
+function param_parse(val) {
+    try {
+        return JSON.parse(val);
+    } catch (e) {
+        return val;
+    }
+}
+
+function param_stringify(val) {
+    if (typeof val == "string") {
+        return val;
+    } else {
+        return JSON.stringify(val);
+    }
+}
 
 var TaskModel = widgets.DOMWidgetModel.extend(
     {
@@ -230,10 +245,10 @@ var GraphView = widgets.DOMWidgetView.extend({
                 input.find("label").html(key + ":");
                 input.find(".petrova-description").html(
                     available_params[key].type_name + ": " + available_params[key].description);
-                input.find("input").attr({"value": JSON.stringify(existing_params[key])})
+                input.find("input").attr({"value": param_stringify(existing_params[key])})
                 input.find("input").change(function () {
                     existing_params = _.clone(existing_params);
-                    existing_params[key] = JSON.parse(input.find("input").val());
+                    existing_params[key] = param_parse(input.find("input").val());
                     task.set("params", existing_params);
                     task.save_changes();
                 });
