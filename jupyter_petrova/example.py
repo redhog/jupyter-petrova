@@ -14,6 +14,29 @@ def import_fn(name):
     mod, fn = name.rsplit(".", 1)
     return getattr(importlib.import_module(mod), fn)
 
+def inspect_fn(fn):
+    res = {}
+    for m in docstring_parser.parse(fn.__doc__).meta:
+        t = type(m).__name__[len("Docstring"):].lower()
+        if t not in res:
+            res[t] = []
+        res[t].append(dict(m.__dict__))
+    if res:
+        res["param"] = {p["arg_name"]: p for p in res["param"]}
+        if len(res["returns"]) == 1:
+            res["returns"] = res["returns"]
+    else:
+        signature = inspect.signature(fn)
+        res["param"] = {
+            p.name: {
+                "description": p.name,
+                "arg_name": p.name,
+                "type_name": ("%s.%s" % (p.annotation.__module__, p.annotation.__name__)) if p.annotation is not inspect._empty else None,
+                "is_optional": p.default is not inspect._empty,
+                "default": p.default if p.default is not inspect._empty else None}
+            for name, p in signature.parameters.items()}
+    return res
+
 # See js/lib/example.js for the frontend counterpart to this file.
 
 @widgets.register
@@ -61,13 +84,7 @@ class Task(widgets.Widget):
     @observe('name')
     def name_changed(self, change):
         self.fn = import_fn(self.name)
-        res = {}
-        for m in docstring_parser.parse(self.fn.__doc__).meta:
-            t = type(m).__name__[len("Docstring"):].lower()
-            if t not in res:
-                res[t] = []
-            res[t].append(dict(m.__dict__))
-        self.description = res
+        self.description = inspect_fn(self.fn)
         self.update()
 
     @observe('params')
