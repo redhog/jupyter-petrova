@@ -7,6 +7,8 @@ import json
 import weakref
 import IPython.core.interactiveshell
 import traceback
+import docstring_parser
+import inspect
 
 def import_fn(name):
     mod, fn = name.rsplit(".", 1)
@@ -25,6 +27,7 @@ class Task(widgets.Widget):
 
     version = Int(0).tag(sync=True)
     name = Unicode().tag(sync=True)
+    description = Dict(key_trait=Unicode()).tag(sync=True)
     inputs = Dict(key_trait=Unicode(),
                   value_trait=Instance(klass=widgets.Widget)).tag(sync=True, **widget_serialization)
     params = Dict(key_trait=Unicode()).tag(sync=True)
@@ -36,6 +39,7 @@ class Task(widgets.Widget):
     y = Int(default=0).tag(sync=True)
     
     def __init__(self, *arg, **kw):
+        self.fn = None
         self.value_id = None
         self.value = None
         self.exception = None
@@ -56,6 +60,14 @@ class Task(widgets.Widget):
 
     @observe('name')
     def name_changed(self, change):
+        self.fn = import_fn(self.name)
+        res = {}
+        for m in docstring_parser.parse(self.fn.__doc__).meta:
+            t = type(m).__name__[len("Docstring"):].lower()
+            if t not in res:
+                res[t] = []
+            res[t].append(dict(m.__dict__))
+        self.description = res
         self.update()
 
     @observe('params')
@@ -84,7 +96,7 @@ class Task(widgets.Widget):
                 if task is not None and task.value_id is None:
                     raise ValueError("Input task for %s have errors" % (key,))
 
-            self.value = import_fn(self.name)(
+            self.value = self.fn(
                 **self.params,
                 **{key:task.value for key, task in self.inputs.items()
                    if task is not None})

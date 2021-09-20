@@ -88,6 +88,10 @@ var GraphView = widgets.DOMWidgetView.extend({
 
                 if (value["text/html"]) {
                     self.output_div.html(value["text/html"]);
+                } else if (value["image/png"]) {
+                    var image = $("<img></img>");
+                    image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
+                    self.output_div.html(image);
                 } else if (value["text/plain"]) {
                     var wrapper = $("<pre></pre>");
                     wrapper.html(value["text/plain"]);
