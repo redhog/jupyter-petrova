@@ -7,6 +7,7 @@ var $ = require('jquery');
 backbone = require("../node_modules/backbone/backbone.js");
 joint = require('../node_modules/jointjs/dist/joint.js');
 jointcss = require('../node_modules/jointjs/dist/joint.css');
+petrovacss = require('./petrova.css');
 
 
 var TaskModel = widgets.DOMWidgetModel.extend(
@@ -60,15 +61,15 @@ var GraphView = widgets.DOMWidgetView.extend({
         var self = this;
         
         if (!self.graph) {
-            self.graph_div = $("<div style='position: relative; display: inline-block;'></div>");
+            self.graph_div = $("<div class='petrova-graph'></div>");
             $(self.el).append(self.graph_div);
-            self.sidebar = $("<div style='position: relative; display: inline-block; height: 700px; width: 33%; border-left: 1px solid grey;'></div>");
+            self.sidebar = $("<div class='petrova-sidebar'></div>");
             $(self.el).append(self.sidebar);
-            self.output_wrapper = $("<div style='position: absolute; top: 0; height: 50%; width: 100%; overflow: auto; border-bottom: 1px solid grey;'></div>");
+            self.output_wrapper = $("<div class='petrova-output-wrapper'></div>");
             self.sidebar.append(self.output_wrapper);
-            self.output_div = $("<div style='position: absolute;'></div>");
+            self.output_div = $("<div class='petrova-output'></div>");
             self.output_wrapper.html(self.output_div);
-            self.input_div = $("<div style='position: absolute; top: 50%; height: 50%; width: 100%; overflow: auto;'></div>");
+            self.input_div = $("<div class='petrova-input'></div>");
             self.sidebar.append(self.input_div);
             
             self.graph = new joint.dia.Graph;
@@ -115,6 +116,7 @@ var GraphView = widgets.DOMWidgetView.extend({
     },
 
     add_task: function (task) {
+        var self = this;
         var rect = new joint.shapes.standard.Rectangle();
         rect.position(task.get("x"), task.get("y"));
         rect.resize(100, 40);
@@ -128,16 +130,19 @@ var GraphView = widgets.DOMWidgetView.extend({
             },
             task_id: task.task_id
         });
-        rect.addTo(this.graph);
+        rect.addTo(self.graph);
         
         task.on('change:x', function () {
             rect.position(task.get("x"), task.get("y"));
-        }, this);
+        }, self);
         task.on('change:y', function () {
             rect.position(task.get("x"), task.get("y"));
-        }, this);
+        }, self);
+        task.on('change:value_repr', function () {
+            self.update_task_value_repr(task);
+        }, self);
         
-        this.existing[task.task_id] = {"task": task, "cell": rect, "links": {}};
+        self.existing[task.task_id] = {"task": task, "cell": rect, "links": {}};
     },
 
     update_task: function (task) {
@@ -189,34 +194,49 @@ var GraphView = widgets.DOMWidgetView.extend({
         this.render();
     },
 
+    update_task_value_repr: function (task) {
+        var self = this;
+        
+        if (task == self.current_task) {
+            var value = task.get("value_repr")[0];
+            if (value["text/html"]) {
+                self.output_div.html(value["text/html"]);
+            } else if (value["image/png"]) {
+                var image = $("<img></img>");
+                image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
+                self.output_div.html(image);
+            } else if (value["text/plain"]) {
+                var wrapper = $("<pre></pre>");
+                wrapper.html(value["text/plain"]);
+                self.output_div.html(wrapper);
+            }
+        }
+    },
+    
     select_task: function(elementView) {
         var self = this;
         var currentElement = elementView.model;
         var task = self.existing[currentElement.attr("task_id")].task;
+        self.current_task = task;
 
-        var value = task.get("value_repr")[0];
-        if (value["text/html"]) {
-            self.output_div.html(value["text/html"]);
-        } else if (value["image/png"]) {
-            var image = $("<img></img>");
-            image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
-            self.output_div.html(image);
-        } else if (value["text/plain"]) {
-            var wrapper = $("<pre></pre>");
-            wrapper.html(value["text/plain"]);
-            self.output_div.html(wrapper);
-        }
+        self.update_task_value_repr(task);
 
         var form = $("<form></form>");
         var available_params = task.get("description").param;
         var existing_params = task.get("params");
         Object.keys(available_params).map(function (key) {
             if (!existing_params[key] || !existing_params[key].task_id) {
-                var input = $("<div><label></label><input type='text'></input><div class='description'></div></div>");
+                var input = $("<div><label></label><input type='text'></input><div class='petrova-description'></div></div>");
                 input.find("label").html(key + ":");
-                input.find(".description").html(
+                input.find(".petrova-description").html(
                     available_params[key].type_name + ": " + available_params[key].description);
                 input.find("input").attr({"value": JSON.stringify(existing_params[key])})
+                input.find("input").change(function () {
+                    existing_params = _.clone(existing_params);
+                    existing_params[key] = JSON.parse(input.find("input").val());
+                    task.set("params", existing_params);
+                    task.save_changes();
+                });
                 form.append(input);
             }
         });

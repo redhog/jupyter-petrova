@@ -1,0 +1,38 @@
+.petrova-graph {
+    position: relative;
+    display: inline-block;
+}
+
+.petrova-sidebar {
+    position: relative;
+    display: inline-block;
+    height: 700px;
+    width: 33%;
+    border-left: 1px solid grey;
+}
+
+.petrova-output-wrapper {
+    position: absolute;
+    top: 0;
+    height: 50%;
+    width: 100%;
+    overflow: auto;
+    border-bottom: 1px solid grey;
+}
+
+
+.petrova-output {
+    position: absolute;
+}
+
+.petrova-input {
+    position: absolute;
+    top: 50%;
+    height: 50%;
+    width: 100%;
+    overflow: auto;
+}
+
+.petrova-description {
+    font-size: .7em;
+}
