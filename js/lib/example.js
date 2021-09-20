@@ -103,6 +103,8 @@ var GraphView = widgets.DOMWidgetView.extend({
             self.model.on('change:tasks', self.tasks_changed, self);
 
             self.paper.on('element:pointerclick', self.select_task, self);
+
+            self.graph.on('change:position', self.task_moved, self);
         }
         
         var tasks = self.model.get("tasks");
@@ -226,6 +228,14 @@ var GraphView = widgets.DOMWidgetView.extend({
                 self.output_div.html(wrapper);
             }
         }
+    },
+
+    task_moved: function(currentElement) {
+        var pos = currentElement.position();
+        var task = this.existing[currentElement.attr("task_id")].task;
+        task.set("x", pos.x);
+        task.set("y", pos.y);
+        task.save_changes();
     },
     
     select_task: function(elementView) {
