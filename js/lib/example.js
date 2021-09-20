@@ -61,12 +61,16 @@ var GraphView = widgets.DOMWidgetView.extend({
         
         if (!self.graph) {
             self.graph_div = $("<div style='position: relative; display: inline-block;'></div>");
-            self.output_div = $("<div style='position: absolute;'></div>");
-            self.output_wrapper = $("<div style='position: relative; display: inline-block; height: 700px; width: 33%; border-left: 1px solid grey;'></div>");
-            self.output_wrapper.html(self.output_div);
             $(self.el).append(self.graph_div);
-            $(self.el).append(self.output_wrapper);
-
+            self.sidebar = $("<div style='position: relative; display: inline-block; height: 700px; width: 33%; border-left: 1px solid grey;'></div>");
+            $(self.el).append(self.sidebar);
+            self.output_wrapper = $("<div style='position: absolute; top: 0; height: 50%; width: 100%; overflow: auto; border-bottom: 1px solid grey;'></div>");
+            self.sidebar.append(self.output_wrapper);
+            self.output_div = $("<div style='position: absolute;'></div>");
+            self.output_wrapper.html(self.output_div);
+            self.input_div = $("<div style='position: absolute; top: 50%; height: 50%; width: 100%; overflow: auto;'></div>");
+            self.sidebar.append(self.input_div);
+            
             self.graph = new joint.dia.Graph;
             self.paper = new joint.dia.Paper({
                 el: self.graph_div[0],
@@ -82,22 +86,7 @@ var GraphView = widgets.DOMWidgetView.extend({
 
             self.model.on('change:tasks', self.tasks_changed, self);
 
-            self.paper.on('element:pointerclick', function(elementView) {
-                var currentElement = elementView.model;
-                var value = self.existing[currentElement.attr("task_id")].task.get("value_repr")[0];
-
-                if (value["text/html"]) {
-                    self.output_div.html(value["text/html"]);
-                } else if (value["image/png"]) {
-                    var image = $("<img></img>");
-                    image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
-                    self.output_div.html(image);
-                } else if (value["text/plain"]) {
-                    var wrapper = $("<pre></pre>");
-                    wrapper.html(value["text/plain"]);
-                    self.output_div.html(wrapper);
-                }
-            });
+            self.paper.on('element:pointerclick', self.select_task, self);
         }
         
         var tasks = self.model.get("tasks");
@@ -199,6 +188,40 @@ var GraphView = widgets.DOMWidgetView.extend({
         console.log("AAAAAAAAAA", this.model.get('tasks'));
         this.render();
     },
+
+    select_task: function(elementView) {
+        var self = this;
+        var currentElement = elementView.model;
+        var task = self.existing[currentElement.attr("task_id")].task;
+
+        var value = task.get("value_repr")[0];
+        if (value["text/html"]) {
+            self.output_div.html(value["text/html"]);
+        } else if (value["image/png"]) {
+            var image = $("<img></img>");
+            image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
+            self.output_div.html(image);
+        } else if (value["text/plain"]) {
+            var wrapper = $("<pre></pre>");
+            wrapper.html(value["text/plain"]);
+            self.output_div.html(wrapper);
+        }
+
+        var form = $("<form></form>");
+        var available_params = task.get("description").param;
+        var existing_params = task.get("params");
+        Object.keys(available_params).map(function (key) {
+            if (!existing_params[key] || !existing_params[key].task_id) {
+                var input = $("<div><label></label><input type='text'></input><div class='description'></div></div>");
+                input.find("label").html(key + ":");
+                input.find(".description").html(
+                    available_params[key].type_name + ": " + available_params[key].description);
+                input.find("input").attr({"value": JSON.stringify(existing_params[key])})
+                form.append(input);
+            }
+        });
+        self.input_div.html(form);
+    }
 });
 
 
