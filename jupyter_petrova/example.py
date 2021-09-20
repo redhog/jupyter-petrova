@@ -51,9 +51,7 @@ class Task(widgets.Widget):
     version = Int(0).tag(sync=True)
     name = Unicode().tag(sync=True)
     description = Dict(key_trait=Unicode()).tag(sync=True)
-    inputs = Dict(key_trait=Unicode(),
-                  value_trait=Instance(klass=widgets.Widget)).tag(sync=True, **widget_serialization)
-    params = Dict(key_trait=Unicode()).tag(sync=True)
+    params = Dict(key_trait=Unicode()).tag(sync=True, **widget_serialization)
     value_repr = List(default=[]).tag(sync=True)
     exception = Unicode(allow_none=True).tag(sync=True)
     traceback = Unicode(allow_none=True).tag(sync=True)
@@ -61,7 +59,7 @@ class Task(widgets.Widget):
     x = Int(default=0).tag(sync=True)
     y = Int(default=0).tag(sync=True)
     
-    def __init__(self, *arg, **kw):
+    def __init__(self, name, **kw):
         self.fn = None
         self.value_id = None
         self.value = None
@@ -69,12 +67,13 @@ class Task(widgets.Widget):
         self.traceback = None
         self.input_ids = {}
         self.outputs = weakref.WeakValueDictionary()
-        widgets.Widget.__init__(self, *arg, **kw)
+        widgets.Widget.__init__(self, name=name, params=kw)
         
-    @observe('inputs')
-    def inputs_changed(self, change):
-        for inp in self.inputs.values():
-            inp.outputs[id(self)] = self
+    @observe('params')
+    def params_changed(self, change):
+        for inp in self.params.values():
+            if isinstance(inp, Task):
+                inp.outputs[id(self)] = self
         self.update()
 
     @observe('version')
@@ -86,10 +85,6 @@ class Task(widgets.Widget):
         self.fn = import_fn(self.name)
         self.description = inspect_fn(self.fn)
         self.update()
-
-    @observe('params')
-    def params_changed(self, change):
-        self.update()        
             
     def calculate_value_id(self):
         return hashlib.sha256(
@@ -97,8 +92,8 @@ class Task(widgets.Widget):
                 dict(
                     name=self.name,
                     version=self.version,
-                    **self.params,
-                    **{key:task.value_id for key, task in self.inputs.items()}),
+                    **{key:(value.value_id if isinstance(value, Task) else value)
+                       for key, value in self.params.items()}),
                 sort_keys=True).encode("utf-8")
         ).hexdigest()
         
@@ -109,14 +104,14 @@ class Task(widgets.Widget):
             return        
 
         try:
-            for key, task in self.inputs.items():
-                if task is not None and task.value_id is None:
+            for key, task in self.params.items():
+                if task is not None and isinstance(task, Task) and task.value_id is None:
                     raise ValueError("Input task for %s have errors" % (key,))
 
             self.value = self.fn(
-                **self.params,
-                **{key:task.value for key, task in self.inputs.items()
-                   if task is not None})
+                **{key:(value.value if isinstance(value, Task) else value)
+                   for key, value in self.params.items()
+                   if value is not None})
         except Exception as e:
             self.exception = repr(e)
             self.traceback = traceback.format_exc()

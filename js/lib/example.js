@@ -19,7 +19,7 @@ var TaskModel = widgets.DOMWidgetModel.extend(
             _model_module_version: '0.0.1',
             _view_module_version: '0.0.1',
             name: 'Unknown',
-            inputs: {},
+            params: {},
             value_repr: {},
             x: 0,
             y: 0
@@ -27,7 +27,7 @@ var TaskModel = widgets.DOMWidgetModel.extend(
     },
     {
         serializers: _.extend({
-            inputs: { deserialize: widgets.unpack_models }
+            params: { deserialize: widgets.unpack_models }
         }, widgets.DOMWidgetModel.serializers)
     }
 );
@@ -154,19 +154,19 @@ var GraphView = widgets.DOMWidgetView.extend({
     update_task: function (task) {
         var self = this;
         var existing_links = self.existing[task.task_id].links;
-        var inputs = task.get("inputs");
+        var params = task.get("params");
         
         Object.keys(existing_links).map(function (key) {
-            if (!inputs[key] || (existing_links[key].task.task_id != inputs[key].task_id)) {
+            if (!params[key] || (existing_links[key].task.task_id != params[key].task_id)) {
                 existing_links[key].cell.remove();
                 delete existing_links[key];
             }
         });
  
-        Object.keys(inputs).map(function (key) {
-            if (!existing_links[key]) {
+        Object.keys(params).map(function (key) {
+            if (params[key].task_id && !existing_links[key]) {
                 var link = new joint.shapes.standard.Link();
-                link.source(self.existing[inputs[key].task_id].cell, {
+                link.source(self.existing[params[key].task_id].cell, {
                     anchor: {
                         name: 'center',
                         args: {
@@ -188,7 +188,7 @@ var GraphView = widgets.DOMWidgetView.extend({
                 link.connector('rounded');
                 link.addTo(self.graph);
                 existing_links[key] = {
-                    "task": inputs[key],
+                    "task": params[key],
                     "cell": link
                 };
             }
