@@ -111,8 +111,7 @@ var GraphView = widgets.DOMWidgetView.extend({
 
             self.model.on('change:tasks', self.tasks_changed, self);
 
-            self.paper.on('element:pointerclick', self.select_task, self);
-
+            self.paper.on('element:pointerclick', self.select_task_from_view, self);
             self.graph.on('change:position', self.task_moved, self);
         }
         
@@ -251,10 +250,20 @@ var GraphView = widgets.DOMWidgetView.extend({
         task.save_changes();
     },
     
-    select_task: function(elementView) {
+    select_task_from_view: function(elementView, eventObject, eventX, eventY) {
         var self = this;
         var currentElement = elementView.model;
         var task = self.existing[currentElement.attr("task_id")].task;
+        if (eventObject.shiftKey) {
+            self.connect_task(task);
+        } else {
+            self.select_task(task);
+        }
+    },
+
+    select_task: function (task) {
+        var self = this;
+
         self.current_task = task;
 
         self.update_task_value_repr(task);
@@ -275,11 +284,30 @@ var GraphView = widgets.DOMWidgetView.extend({
                     task.set("params", existing_params);
                     task.save_changes();
                 });
+                input.find("input").focus(function() {
+                    self.current_input = key;
+                });
                 form.append(input);
             }
         });
         self.input_div.html(form);
+    },
+
+    connect_task: function (other_task) {
+        var self = this;
+        var task = self.current_task;
+        var key = self.current_input
+        if (task && key) {
+            var existing_params = _.clone(task.get("params"));
+            existing_params[key] = other_task;
+            task.set("params", existing_params);
+            task.save_changes();
+
+            self.select_task(task);
+            self.tasks_changed();
+        }
     }
+    
 });
 
 

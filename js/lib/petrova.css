@@ -62,6 +62,7 @@
     width: 100%;
     overflow: auto;
     border-bottom: 1px solid grey;
+    padding: 5px;
 }
 
 
@@ -75,6 +76,7 @@
     height: 50%;
     width: 100%;
     overflow: auto;
+    padding: 5px;
 }
 
 .petrova-description {
