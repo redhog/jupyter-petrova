@@ -279,6 +279,10 @@ var GraphView = widgets.DOMWidgetView.extend({
         var optional_parameters_div = $("<div class='expandable' style='display: none;'></div>");
         form_content.append(optional_parameters_div);
 
+        form_content.append("<div class='expander'>Connections</div>");
+        var connections_div = $("<div class='expandable' style='display: none;'></div>");
+        form_content.append(connections_div);
+
         form_content.find(".expander").click(function () {
             $(this).next(".expandable").slideToggle("fast").siblings(".expandable:visible").slideUp("fast");
             $(this).toggleClass("active");
@@ -309,6 +313,21 @@ var GraphView = widgets.DOMWidgetView.extend({
                 } else {
                     parameters_div.append(input);
                 }
+            } else if (existing_params[key].task_id) {
+                var input = $("<div><label></label><input type='button' value='X'></input><span class='petrova-connection-info'></span><div class='petrova-description'></div></div>");
+                input.find(".petrova-connection-info").html(existing_params[key].task_id);
+                input.find("label").html(key + ":");
+                input.find(".petrova-description").html(
+                    available_params[key].type_name + ": " + available_params[key].description);
+                input.find("input").click(function () {
+                    existing_params = _.clone(existing_params);
+                    delete existing_params[key]
+                    task.set("params", existing_params);
+                    task.save_changes();
+                    self.select_task(task);
+                    self.tasks_changed();                    
+                });
+                connections_div.append(input);
             }
         });
         
