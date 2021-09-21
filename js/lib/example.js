@@ -2,7 +2,7 @@
 
 var widgets = require('@jupyter-widgets/base');
 var _ = require('lodash');
-var $ = require('jquery');
+var $ = window.jQuery;
     
 backbone = require("../node_modules/backbone/backbone.js");
 joint = require('../node_modules/jointjs/dist/joint.js');
@@ -267,8 +267,25 @@ var GraphView = widgets.DOMWidgetView.extend({
         self.current_task = task;
 
         self.update_task_value_repr(task);
-
+        
         var form = $("<form></form>");
+        var form_content = $("<div></div>");
+        form.append(form_content);
+
+        form_content.append("<div class='expander active'>Parameters</div>");
+        var parameters_div = $("<div class='expandable active'></div>");
+        form_content.append(parameters_div);
+        form_content.append("<div class='expander'>Optional parameters</div>");
+        var optional_parameters_div = $("<div class='expandable' style='display: none;'></div>");
+        form_content.append(optional_parameters_div);
+
+        form_content.find(".expander").click(function () {
+            $(this).next(".expandable").slideToggle("fast").siblings(".expandable:visible").slideUp("fast");
+            $(this).toggleClass("active");
+            $(this).siblings(".expander").removeClass("active");
+            return false;
+        });
+        
         var available_params = task.get("description").param;
         var existing_params = task.get("params");
         Object.keys(available_params).map(function (key) {
@@ -287,9 +304,14 @@ var GraphView = widgets.DOMWidgetView.extend({
                 input.find("input").focus(function() {
                     self.current_input = key;
                 });
-                form.append(input);
+                if (available_params[key].is_optional) {
+                    optional_parameters_div.append(input);
+                } else {
+                    parameters_div.append(input);
+                }
             }
         });
+        
         self.input_div.html(form);
     },
 
