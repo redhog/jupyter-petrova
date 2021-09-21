@@ -1,6 +1,76 @@
-.petrova-graph {
+.petrova-maximized .CodeMirror,
+.petrova-maximized #header,
+.petrova-maximized .cell.unselected,
+.petrova-maximized .cell > .input {
+    display: none !important;
+}
+
+.petrova-maximized #notebook,
+.petrova-maximized #notebook-container {
+    padding: 0;
+    border: 0;
+    margin: 0;
+}
+
+.petrova-maximized #site {
+    height: 100% !important;
+    /*
+    position: absolute;
+    top: 0;
+    height: 100% !important;
+    top: 0px;
+    overflow: hidden;
+    */
+}
+.petrova-maximized .ipython-main-app,
+.petrova-maximized .code_cell,
+.petrova-maximized .output_wrapper,
+.petrova-maximized .output_area,
+.petrova-maximized .output_subarea,
+.petrova-maximized .p-Widget {
+    position: inherit;
+    display: block;
+}
+.petrova-maximized .petrova-wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: white;
+}
+
+.petrova-maximized .petrova-graph-wrapper,
+.petrova-maximized .petrova-sidebar {
+    position: absolute;
+    bottom: 0;
+    top: 48px;
+    height: inherit;
+}
+.petrova-maximized .petrova-sidebar {
+    left: 66%;
+}
+
+
+
+
+.petrova-wrapper {
+}
+
+.petrova-toolbar {
+    position: relative;
+    display: block;
+}
+
+.petrova-graph-wrapper {
     position: relative;
     display: inline-block;
+    width: 66%;
+    height: 700px;
+}
+
+.petrova-graph {
 }
 
 .petrova-sidebar {

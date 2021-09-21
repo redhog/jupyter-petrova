@@ -76,10 +76,19 @@ var GraphView = widgets.DOMWidgetView.extend({
         var self = this;
         
         if (!self.graph) {
+            self.wrapper_div = $("<div class='petrova-wrapper'></div>");
+            $(self.el).append(self.wrapper_div);
+            self.toolbar_div = $("<div class='petrova-toolbar navbar navbar-default'><ul class='nav navbar-nav'></ul></div>");
+            self.wrapper_div.append(self.toolbar_div);
+            var maximize = $("<li><a href='javascript:void(0);'>Maximize</a></li>");
+            maximize.find("a").click(self.maximize.bind(self));
+            self.toolbar_div.find(".nav").append(maximize);
+            self.graph_wrapper = $("<div class='petrova-graph-wrapper'></div>");
+            self.wrapper_div.append(self.graph_wrapper);
             self.graph_div = $("<div class='petrova-graph'></div>");
-            $(self.el).append(self.graph_div);
+            self.graph_wrapper.append(self.graph_div);
             self.sidebar = $("<div class='petrova-sidebar'></div>");
-            $(self.el).append(self.sidebar);
+            self.wrapper_div.append(self.sidebar);
             self.output_wrapper = $("<div class='petrova-output-wrapper'></div>");
             self.sidebar.append(self.output_wrapper);
             self.output_div = $("<div class='petrova-output'></div>");
@@ -91,8 +100,8 @@ var GraphView = widgets.DOMWidgetView.extend({
             self.paper = new joint.dia.Paper({
                 el: self.graph_div[0],
                 model: self.graph,
-                width: "66%",
-                height: 700,
+                width: "100%",
+                height: "100%",
                 gridSize: 1
             });
             self.graph_div.find("svg").css({"height": "inherit"});
@@ -126,7 +135,11 @@ var GraphView = widgets.DOMWidgetView.extend({
             self.update_task(tasks[key]);
         });
     },
-
+    
+    maximize: function () {
+        $("body").toggleClass("petrova-maximized");
+    },
+    
     remove_task: function (task_id) {
         this.existing[task_id].cell.remove();
         delete this.existing[task_id];
