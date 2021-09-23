@@ -229,7 +229,7 @@ var GraphView = widgets.DOMWidgetView.extend({
         });
  
         Object.keys(params).map(function (key) {
-            if (params[key].task_id && !existing_links[key]) {
+            if (params[key] && params[key].task_id && !existing_links[key]) {
                 var link = new joint.shapes.standard.Link();
                 link.source(self.existing[params[key].task_id].cell, {
                     anchor: {
@@ -261,7 +261,6 @@ var GraphView = widgets.DOMWidgetView.extend({
     },
 
     tasks_changed: function() {
-        console.log("AAAAAAAAAA", this.model.get('tasks'));
         this.render();
     },
 
@@ -309,6 +308,14 @@ var GraphView = widgets.DOMWidgetView.extend({
         }
     },
 
+    delete_task: function (task) {
+        var self = this;
+        var tasks = _.clone(self.model.get("tasks"));
+        delete tasks[task.task_id];
+        self.model.set("tasks", tasks);
+        self.model.save_changes();
+    },
+    
     select_task: function (task) {
         var self = this;
 
@@ -319,6 +326,10 @@ var GraphView = widgets.DOMWidgetView.extend({
         var form = $("<form></form>");
         var form_content = $("<div></div>");
         form.append(form_content);
+
+        var remover = $("<div><input type='button' value='Delete'></input></div>");
+        remover.find("input").click(function () { self.delete_task(task); });
+        form_content.append(remover);
 
         form_content.append("<div class='expander active'>Parameters</div>");
         var parameters_div = $("<div class='expandable active'></div>");
