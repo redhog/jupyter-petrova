@@ -122,10 +122,8 @@ var GraphView = widgets.DOMWidgetView.extend({
             self.graph_wrapper.append(self.graph_div);
             self.sidebar = $("<div class='petrova-sidebar'></div>");
             self.wrapper_div.append(self.sidebar);
-            self.output_wrapper = $("<div class='petrova-output-wrapper'></div>");
-            self.sidebar.append(self.output_wrapper);
             self.output_div = $("<div class='petrova-output'></div>");
-            self.output_wrapper.html(self.output_div);
+            self.sidebar.html(self.output_div);
             self.input_div = $("<div class='petrova-input'></div>");
             self.sidebar.append(self.input_div);
             
@@ -266,26 +264,46 @@ var GraphView = widgets.DOMWidgetView.extend({
 
     update_task_value_repr: function (task) {
         var self = this;
-        
-        if (task == self.current_task) {
-            var value = task.get("value_repr")[0];
-            if (value) {
-                if (value["text/html"]) {
-                    self.output_div.html(value["text/html"]);
-                } else if (value["image/png"]) {
+        var views = task.get("value_repr");
+
+        if ((task == self.current_task) && views) {            
+            var tabcontainer = $("<div></div>");
+            var tablist = $("<ul></ul>");
+            tabcontainer.append(tablist);
+            
+            Object.keys(views).map(function (view_name) {
+                var view = views[view_name];
+                var view_id = random_id(5);
+                var tabhead = $("<li><a></a></li>");
+                tabhead.find("a").attr({href: "#view-" + view_id});
+                tabhead.find("a").html(view_name);
+                tablist.append(tabhead);
+                var tabcontent = $("<div></div>");
+                tabcontent.attr({"id": "view-" + view_id});
+                tabcontainer.append(tabcontent);
+
+                var mimeview = view[0];
+                if (mimeview["text/html"]) {
+                    tabcontent.html(mimeview["text/html"]);
+                } else if (mimeview["image/png"]) {
                     var image = $("<img></img>");
-                    image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
-                    self.output_div.html(image);
-                } else if (value["text/plain"]) {
+                    image.attr({"src": "data:image/png;base64,"
+                                + btoa((new Uint8Array(mimeview["image/png"].buffer)).reduce(
+                                    function (data, byte) {
+                                        return data + String.fromCharCode(byte);
+                                    }, ''))});
+                    tabcontent.html(image);
+                } else if (mimeview["text/plain"]) {
                     var wrapper = $("<pre></pre>");
-                    wrapper.html(value["text/plain"]);
-                    self.output_div.html(wrapper);
-                } else {
-                    self.output_div.html("");
+                    wrapper.html(mimeview["text/plain"]);
+                    tabcontent.html(wrapper);
                 }
-            } else {
-                self.output_div.html("");
-            }
+            });
+
+            self.output_div.html(tabcontainer);
+            tabcontainer.tabs({
+              heightStyle: "fill"
+            });
         }
     },
 

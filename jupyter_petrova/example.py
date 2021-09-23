@@ -10,6 +10,7 @@ import traceback
 import docstring_parser
 import inspect
 import sys
+import matplotlib.pyplot as plt
 
 def import_fn(name):
     mod, fn = name.rsplit(".", 1)
@@ -51,6 +52,15 @@ def list_functions():
         if callable(get_obj(mod, objname))
     ])
 
+
+viewers = {}
+
+def viewer(title):
+    def viewer(fn):
+        viewers[title] = fn
+        return fn
+    return viewer
+
 # See js/lib/example.js for the frontend counterpart to this file.
 
 @widgets.register
@@ -66,7 +76,7 @@ class Task(widgets.Widget):
     name = Unicode().tag(sync=True)
     description = Dict(key_trait=Unicode()).tag(sync=True)
     params = Dict(key_trait=Unicode()).tag(sync=True, **widget_serialization)
-    value_repr = List(default=[]).tag(sync=True)
+    value_repr = Dict(default={}).tag(sync=True)
     exception = Unicode(allow_none=True).tag(sync=True)
     traceback = Unicode(allow_none=True).tag(sync=True)
 
@@ -139,21 +149,29 @@ class Task(widgets.Widget):
         except Exception as e:
             self.exception = repr(e)
             self.traceback = traceback.format_exc()
-            self.value_repr = IPython.core.interactiveshell.InteractiveShell.instance().display_formatter.format(self.exception)
             self.value_id = None
+            value_repr = {"Error": IPython.core.interactiveshell.InteractiveShell.instance().display_formatter.format(self.exception)}
         else:
             self.exception = None
             self.traceback = None
-            self.value_repr = IPython.core.interactiveshell.InteractiveShell.instance().display_formatter.format(self.value)
             self.value_id = value_id
-        
+            value_repr = {"Default": IPython.core.interactiveshell.InteractiveShell.instance().display_formatter.format(self.value)}
+            for key, viewer in viewers.items():
+                print("Trying to generate view", key)
+                try:
+                    value_repr[key] = IPython.core.interactiveshell.InteractiveShell.instance().display_formatter.format(viewer(self.value))
+                except ValueError as e:
+                    pass
+
+        self.value_repr = value_repr
+            
         if recurse:
             for task in self.outputs.values():
                 task.update()
 
     _ipython_display_ = None
     def _repr_mimebundle_(self, *arg, **kw):
-        return self.value_repr[0]
+        return self.value_repr["Default"][0]
 
 @widgets.register
 class Graph(widgets.DOMWidget):
@@ -180,3 +198,29 @@ class Graph(widgets.DOMWidget):
             tasks[task_id] = Task.create_full_args(**task)
         self.new_tasks = {}
         self.tasks = tasks
+
+
+@viewer("Image")
+def view_image(arr):
+    if not hasattr(arr, "shape") or (len(arr.shape) < 2) or (len(arr.shape) > 3):
+        raise ValueError
+    if hasattr(arr, "values"): arr = arr.values
+    fig = plt.figure()
+    ax = fig.subplots(1, 1)
+    if len(arr.shape) == 2:
+        # This is not RGB data, so normalize values to ]0, 1[
+        print("Normalize")
+        arr = arr - arr.min()
+        arr = arr / arr.max()
+    ax.imshow(arr)
+    return fig
+
+@viewer("Histogram")
+def view_hist(arr):
+    if not hasattr(arr, "shape"):
+        raise ValueError
+    if hasattr(arr, "values"): arr = arr.values
+    fig = plt.figure()
+    ax = fig.subplots(1, 1)
+    ax.hist(arr.flatten())
+    return fig

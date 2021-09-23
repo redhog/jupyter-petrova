@@ -55,19 +55,15 @@
     border-left: 1px solid grey;
 }
 
-.petrova-output-wrapper {
+.petrova-output {
     position: absolute;
     top: 0;
     height: 50%;
     width: 100%;
-    overflow: auto;
     border-bottom: 1px solid grey;
-    padding: 5px;
 }
-
-
-.petrova-output {
-    position: absolute;
+.petrova-output .ui-tabs .ui-tabs-panel {
+    padding: 5px 0px;
 }
 
 .petrova-input {
