@@ -9,6 +9,11 @@ joint = require('../node_modules/jointjs/dist/joint.js');
 jointcss = require('../node_modules/jointjs/dist/joint.css');
 petrovacss = require('./petrova.css');
 
+function random_id(len) {
+    return Array.from(window.crypto.getRandomValues(new Uint8Array(len))).map(
+        function (i) { return String.fromCharCode(97 + i % 26)}).join("");
+}
+
 function param_parse(val) {
     try {
         return JSON.parse(val);
@@ -37,6 +42,7 @@ var TaskModel = widgets.DOMWidgetModel.extend(
             name: 'Unknown',
             params: {},
             value_repr: {},
+            description: {},
             x: 0,
             y: 0
         })
@@ -60,7 +66,9 @@ var GraphModel = widgets.DOMWidgetModel.extend(
             _view_module: 'jupyter-petrova',
             _model_module_version: '0.0.1',
             _view_module_version: '0.0.1',
-            tasks: {}
+            tasks: {},
+            new_tasks: {},
+            functions: []
         })
     },
     {
@@ -83,6 +91,31 @@ var GraphView = widgets.DOMWidgetView.extend({
             var maximize = $("<li><a href='javascript:void(0);'>Maximize</a></li>");
             maximize.find("a").click(self.maximize.bind(self));
             self.toolbar_div.find(".nav").append(maximize);
+
+            var add = $("<li>Add: <input type='text'></input></li>");
+            add.find("input").keyup(function (e) {
+                if(e.keyCode == 13) {
+                    self.create_task(add.find("input").val());
+                }
+            });
+            var functions = self.model.get("functions");
+            add.find("input").autocomplete({
+                source: function (query, cb) {
+                    cb(_.uniq(functions.filter(function (item) {
+                        return (item.substr(0, query.term.length) == query.term);
+                    }).map(function (item) {
+                        var rest = item.substr(query.term.length, item.length);
+                        var dot = rest.indexOf(".");
+                        if (dot >= 0) {
+                            return item.substr(0, query.term.length + dot + 1);
+                        } else {
+                            return item;
+                        }
+                    })));
+                }
+            });
+            self.toolbar_div.find(".nav").append(add);
+
             self.graph_wrapper = $("<div class='petrova-graph-wrapper'></div>");
             self.wrapper_div.append(self.graph_wrapper);
             self.graph_div = $("<div class='petrova-graph'></div>");
@@ -137,6 +170,15 @@ var GraphView = widgets.DOMWidgetView.extend({
     
     maximize: function () {
         $("body").toggleClass("petrova-maximized");
+    },
+
+    create_task: function (name) {
+        var self = this;
+        var new_tasks = _.clone(self.model.get("new_tasks"));
+        var task_id = random_id(8);
+        new_tasks[task_id] = {"name": name};
+        self.model.set("new_tasks", new_tasks);
+        self.model.save_changes();
     },
     
     remove_task: function (task_id) {
@@ -228,16 +270,22 @@ var GraphView = widgets.DOMWidgetView.extend({
         
         if (task == self.current_task) {
             var value = task.get("value_repr")[0];
-            if (value["text/html"]) {
-                self.output_div.html(value["text/html"]);
-            } else if (value["image/png"]) {
-                var image = $("<img></img>");
-                image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
-                self.output_div.html(image);
-            } else if (value["text/plain"]) {
-                var wrapper = $("<pre></pre>");
-                wrapper.html(value["text/plain"]);
-                self.output_div.html(wrapper);
+            if (value) {
+                if (value["text/html"]) {
+                    self.output_div.html(value["text/html"]);
+                } else if (value["image/png"]) {
+                    var image = $("<img></img>");
+                    image.attr({"src": "data:image/png;base64," + btoa(String.fromCharCode.apply(null, new Uint8Array(value["image/png"].buffer)))});
+                    self.output_div.html(image);
+                } else if (value["text/plain"]) {
+                    var wrapper = $("<pre></pre>");
+                    wrapper.html(value["text/plain"]);
+                    self.output_div.html(wrapper);
+                } else {
+                    self.output_div.html("");
+                }
+            } else {
+                self.output_div.html("");
             }
         }
     },
@@ -290,8 +338,8 @@ var GraphView = widgets.DOMWidgetView.extend({
             return false;
         });
         
-        var available_params = task.get("description").param;
-        var existing_params = task.get("params");
+        var available_params = task.get("description").param || {};
+        var existing_params = task.get("params") || {};
         Object.keys(available_params).map(function (key) {
             if (!existing_params[key] || !existing_params[key].task_id) {
                 var input = $("<div><label></label><input type='text'></input><div class='petrova-description'></div></div>");

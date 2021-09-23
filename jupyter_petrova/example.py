@@ -9,6 +9,7 @@ import IPython.core.interactiveshell
 import traceback
 import docstring_parser
 import inspect
+import sys
 
 def import_fn(name):
     mod, fn = name.rsplit(".", 1)
@@ -37,6 +38,19 @@ def inspect_fn(fn):
             for name, p in signature.parameters.items()}
     return res
 
+def get_obj(mod, objname):
+    try:
+        return getattr(mod, objname)
+    except:
+        return None
+
+def list_functions():
+    return sorted([
+        "%s.%s" % (modname, objname)
+        for modname, mod in dict(sys.modules).items() for objname in dir(mod)
+        if callable(get_obj(mod, objname))
+    ])
+
 # See js/lib/example.js for the frontend counterpart to this file.
 
 @widgets.register
@@ -60,6 +74,10 @@ class Task(widgets.Widget):
     y = Int(default=0).tag(sync=True)
     
     def __init__(self, name, **kw):
+        self._init()
+        widgets.Widget.__init__(self, name=name, params=kw)
+
+    def _init(self):
         self.fn = None
         self.value_id = None
         self.value = None
@@ -67,8 +85,14 @@ class Task(widgets.Widget):
         self.traceback = None
         self.input_ids = {}
         self.outputs = weakref.WeakValueDictionary()
-        widgets.Widget.__init__(self, name=name, params=kw)
         
+    @classmethod
+    def create_full_args(cls, **kw):
+        self = widgets.Widget.__new__(cls)
+        self._init()
+        widgets.Widget.__init__(self, **kw)
+        return self
+    
     @observe('params')
     def params_changed(self, change):
         for inp in self.params.values():
@@ -142,4 +166,17 @@ class Graph(widgets.DOMWidget):
     
     tasks = Dict(key_trait=Unicode(),
                  value_trait=Instance(klass=Task)).tag(sync=True, **widget_serialization)
+    new_tasks = Dict(key_trait=Unicode()).tag(sync=True)
+    functions = List(Unicode()).tag(sync=True)
+    
+    def __init__(self, *arg, **kw):
+        widgets.DOMWidget.__init__(self, *arg, **kw)
+        self.functions = list_functions()
 
+    @observe('new_tasks')
+    def new_tasks_changed(self, change):
+        tasks = dict(self.tasks)
+        for task_id, task in self.new_tasks.items():
+            tasks[task_id] = Task.create_full_args(**task)
+        self.new_tasks = {}
+        self.tasks = tasks
