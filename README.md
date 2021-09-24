@@ -28,3 +28,32 @@ Then you need to rebuild the JS when you make a code change:
     $ yarn run build
 
 You then need to refresh the JupyterLab page when your javascript changes.
+
+
+# Usage
+
+In a notebook cell, enter:
+
+    from jupyter_petrova import *
+    g = Graph()
+    g
+
+Use the "Add" field to select python functions to add. A good starting
+point might be `skimage.io.imread` and anything under
+`skimage.filters`. Click and drag to move boxes on the board. Click on
+a function box to set its input parameters and view its output. To set
+a parameter to the output of another box, select the input field for
+that parameter, then shift-click the other box.
+
+To pre-populate the graph,
+
+    test = Task("skimage.io.imread", fname="test.jpeg")
+    filtered = Task("skimage.filters.edges.sobel", image=test)
+    g = Graph(tasks = {"test": test, "filtered": filtered})
+    g
+
+Individual tasks can be accessed using the dictionary `g.tasks`. Each
+task has a property `value` that contains the output value of that
+task. The function name is available in the task property `name`, and
+the parameters in `params`.
+
